@@ -1,0 +1,99 @@
+/* Template for an EMBEDDED widget */
+
+@font-face {
+    font-family: 'pica';
+    src: url(pica.ttf);
+    }
+
+@font-face {
+    font-family: 'italic';
+    src: url(pica-italic.ttf);
+    }
+
+html, #main {
+    background-color: #1B130F; 
+}
+
+#icons { width: 300px; margin: 0px; }
+
+body {
+    margin: auto;
+    text-align: center;
+    background-color: #1B130F;
+    padding: 0px; 
+    /* overflow:hidden;        */
+}
+
+canvas {
+    margin: auto;
+    /* margin-top: 20px; */
+    width: 725px;
+    height: 390px;
+    /* overflow:hidden; */
+}
+
+#game {
+    display: none;
+}
+
+.icon {
+    width: 50px;
+    margin: 5px;
+}
+
+#main {
+    position: relative;
+    display: block;
+    background-color: #1B130F;
+}
+
+#loadscreen {
+    margin: auto;
+    margin-top: -25px;
+    /* padding: 10px; */
+    visibility: visible;
+    /* position: absolute; */
+    background-color: #1B1011;
+    width: 725px;
+    height: 390px;
+    text-align: center;
+}
+
+#title {
+    padding-top: 25px;
+    font-size: 40px;
+    color: #F2E698;
+}
+
+#description {
+    padding-bottom: 10px;
+    color: #F4E5D5;
+    margin: 0px;
+    padding: 20px;
+    line-height: 1.4;
+    font-size: 18px;
+    word-wrap: normal;
+}
+
+.loadbar-text {
+    /* all px relative to loadscreen */
+    font-size: 16px;
+    text-align: center;
+    color: #F2E698;
+}
+.pica { font-family: 'pica'; }
+.italic { font-family: 'italic'; }
+
+#downloads { display: none; }
+
+button, a { font-family: 'pica';}
+
+#downloads > div > div > button, a { 
+    font-size: 1.5rem;
+    background-color: #2E1C14;
+    color: white;
+    border: 1px solid white;
+    cursor: pointer;
+    text-decoration: none;
+    padding: 5x;
+}

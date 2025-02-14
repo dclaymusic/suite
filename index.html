@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="style.css">
+<title>Suite</title>
+<script src="https://rawgit.com/mattdiamond/Recorderjs/master/dist/recorder.js"></script>
+<script src="snd.js"></script>
+<script src="text.js"></script>
+<script src="character.js"></script>
+<script src="keyboard.js"></script>
+<script src="start.js"></script>
+<script src="maps/suite.js"></script>
+<script src="maps/fireplace.js"></script>
+<script src="maps/ending.js"></script>
+<script src="maps/gallery.js"></script>
+<script src="maps/garden.js"></script>
+<script src="maps/chapel.js"></script>
+<script src="maps/library.js"></script>
+<script src="tile-functions.js"></script>
+<script type="text/javascript">
+
+    var hasStarted = false;
+    const playerSpeed = 125;
+    const scale = 2;
+    const tileW = 50;
+    const tileH = 60;
+    const screenOffset = 0;
+    const mapW = 29; //29
+    const mapH = 13; //13
+    const width = mapW*tileW*scale;
+    const height = mapH*tileH*scale;
+    var gameMap = [];
+    var canMove = false;
+    var allBuffersLoaded = false;
+    var title = 'The QUEEN\'S Suite.';
+    const white = '#F2E698';
+    const black = '#1B130F';
+    var tick = true;
+    var timer;
+    var activeSounds = [];
+    var roomsVisited = [false,false,false,false,false];
+    var comingTo = [14,6];
+    var orderVisited = [];
+    var masterGain;
+    var rec = [];
+    var currentRec = 0;
+    //0 - fireplace
+    //1 - library
+    //2 - chapel
+    //3 - garden
+    //4 - gallery
+    var suiteLanterns = [[7,6,16,6,6,17],[10,5,16,10,4,17],[18,5,16,18,4,17],[21,6,16,22,6,17],[10,7,16,10,8,17],[18,7,16,18,8,17]];
+    //
+
+
+    var gameState = {
+        level : 'The QUEEN\'S Suite.'
+    }
+
+    var ctx = null;
+    var currentSecond = 0, frameCount = 0, framesLastSecond = 0, lastFrameTime = 0;
+    var levelBuildTick = false;
+
+
+    // const audioCtx = new AudioContext();
+
+
+    var player = new Character();
+    var playerPosLast;
+
+    //Viewport Scanning
+    var viewport = { screen : [0,0] };
+
+    var tileTypes = {
+
+
+    0: { floor: floorTypes.solid, src: 'c', img: null, snd: undefined},//character
+
+    //lobby 1-50
+    1: { floor: floorTypes.solid, src: 'm-02', img: null, snd: undefined},//wall
+    2: { floor: floorTypes.solid, src: 'm-03', img: null , snd: undefined},//upper left decoration
+    3: { floor: floorTypes.solid, src: 'm-04', img: null, snd: undefined},//upper right decoration
+    4: { floor: floorTypes.solid, src: 'm-05', img: null, snd: undefined},//bottom left decoration
+    5: { floor: floorTypes.solid, src: 'm-06', img: null, snd: undefined},//bottom right decoration
+    6: { floor: floorTypes.solid, src: 'm-07', img: null, snd: undefined},//fire emblem
+    7: { floor: floorTypes.solid, src: 'm-08', img: null, snd: undefined},//finger emblem
+    8: { floor: floorTypes.solid, src: 'm-09', img: null, snd: undefined},//book emblem
+    9: { floor: floorTypes.solid, src: 'm-10', img: null, snd: undefined},//cross emblem
+    10: { floor: floorTypes.solid, src: 'm-11', img: null, snd: undefined},//leaf emblem
+    11: { floor: floorTypes.solid, src: 'm-12', img: null, snd: undefined},//s emblem
+    12: { floor: floorTypes.path, src: 'm-13', img: null, snd: undefined},//+ door
+    13: { floor: floorTypes.path, src: 'm-14', img: null, player: 'm-14p', playerImg: null, snd: 'main1'},//dark dot
+    14: { floor: floorTypes.path, src: 'm-15', img: null, player: 'm-15p', playerImg: null, snd: 'main2'},//light dot
+    15: { floor: floorTypes.path, src: 'm-16', img: null, player: 'm-16p', playerImg: null, snd: 'main3'},//light x
+    16: { floor: floorTypes.path, src: 'm-17', img: null, player: 'm-17p', playerImg: null, snd: 'main4'},//light o
+    17: { floor: floorTypes.solid, src: 'm-18', img: null, snd: undefined},//i lantern off reg
+    18: { floor: floorTypes.solid, src: 'm-19', img: null, snd: undefined},//i lantern on reg
+    19: { floor: floorTypes.solid, src: 'm-20', img: null, snd: undefined},//- gate locked
+    20: { floor: floorTypes.solid, src: 'm-21', img: null, snd: undefined},//i lantern off dark
+
+    21: { floor: floorTypes.solid, src: 'm-22', img: null, snd: undefined},//fire emblem
+    22: { floor: floorTypes.solid, src: 'm-23', img: null, snd: undefined},//finger emblem
+    23: { floor: floorTypes.solid, src: 'm-24', img: null, snd: undefined},//book emblem
+    24: { floor: floorTypes.solid, src: 'm-25', img: null, snd: undefined},//cross emblem
+    25: { floor: floorTypes.solid, src: 'm-26', img: null, snd: undefined},//leaf emblem
+    26: { floor: floorTypes.solid, src: 'm-27', img: null, snd: undefined},//s emblem
+
+    27: { floor: floorTypes.solid, src: 'm-28', img: null, snd: undefined},//candle
+
+
+ 
+
+    //fireplace 51-100
+
+    51: { floor: floorTypes.solid, src: 'f-03', img: null, snd: undefined},//f-03 - wall 51
+    52: { floor: floorTypes.path, src: 'f-04', img: null, snd: undefined},//f-04 - door 52
+    53: { floor: floorTypes.solid, src: 'f-05', img: null, snd: undefined},//f-05 - lantern off 53
+    54: { floor: floorTypes.solid, src: 'f-06', img: null, snd: undefined},//f-06 - lantern on 54
+    55: { floor: floorTypes.path, src: 'f-07', img: null, snd: 'f-main2'},//f-07 - fire ext lite 55 PATH
+    56: { floor: floorTypes.path, src: 'f-08', img: null, snd: 'f-main1'},//f-08 - fire ext dark 56 PATH
+    57: { floor: floorTypes.solid, src: 'f-09', img: null, snd: undefined},//f-09 - fire lit 57
+    58: { floor: floorTypes.solid, src: 'f-10', img: null, snd: undefined},//f-10 - fire ext 58
+    59: { floor: floorTypes.solid, src: 'f-11', img: null, snd: undefined},//f-11 - fire dark 59 > 55
+    60: { floor: floorTypes.solid, src: 'f-12', img: null, snd: undefined},//f-12 - fire lite 60 > 56
+    61: { floor: floorTypes.solid, src: 'f-13', img: null, snd: undefined},//f-13 - wood panel top 61
+    62: { floor: floorTypes.solid, src: 'f-14', img: null, snd: undefined},//f-14 - wood panel sides 62
+    63: { floor: floorTypes.path, src: 'f-15', img: null, snd: undefined},//f-15 - deer off 63 PATH
+    64: { floor: floorTypes.path, src: 'f-16', img: null, player: 'f-16p', playerImg: null, snd: undefined},//f-16 - deer on 64 PATH
+    65: { floor: floorTypes.solid, src: 'f-17', img: null, snd: undefined},//f-17 - table switch 65
+    66: { floor: floorTypes.solid, src: 'f-18', img: null, snd: undefined},//f-18 - table dash 66
+    67: { floor: floorTypes.solid, src: 'f-19', img: null, snd: undefined},//f-19 - centerpiece 67
+    68: { floor: floorTypes.solid, src: 'f-20', img: null, snd: undefined},//f-20 - sidepieces 68
+    69: { floor: floorTypes.solid, src: 'f-21', img: null, snd: undefined},//f-21 - table sides 69
+    70: { floor: floorTypes.path, src: 'f-22', img: null, snd: 'swish2'},//f-22 - arrow right 70 PATH
+    71: { floor: floorTypes.path, src: 'f-23', img: null, snd: 'swish3'},//f-23 - arrow left 71 PATH
+    72: { floor: floorTypes.path, src: 'f-24', img: null, player: 'f-24p', playerImg: null, snd: 'f-main3'},//f-24 - x path 72 (lantern = 54)
+    73: { floor: floorTypes.path, src: 'f-25', img: null, player: 'f-25p', playerImg: null, snd: 'f-main4'},//f-25 - o path 73 (lantern = 53)
+    74: { floor: floorTypes.path, src: 'f-26', img: null, player: 'f-26p', playerImg: null, snd: 'f-main1a'},//f-26 - path dark 74
+    75: { floor: floorTypes.path, src: 'f-27', img: null, player: 'f-27p', playerImg: null, snd: 'f-main2a'},//f-27 - path lite 75
+    76: { floor: floorTypes.path, src: 'f-28', img: null, player: 'f-28p', playerImg: null, snd: 'f-main7-right'},//f-28 - right pointing arrow off 76
+    77: { floor: floorTypes.path, src: 'f-29', img: null, player: 'f-29p', playerImg: null, snd: 'f-main3-right'},//f-29 - right pointing arrow on 77
+    78: { floor: floorTypes.path, src: 'f-30', img: null, player: 'f-30p', playerImg: null, snd: 'f-main7-left'},//f-30 - left pointing arrow off 78
+    79: { floor: floorTypes.path, src: 'f-31', img: null, player: 'f-31p', playerImg: null, snd: 'f-main3-left'},//f-31 - left pointing arrow on 79
+
+    //library 101-150
+    101: { floor: floorTypes.solid, src: 'l-03', img: null, snd: undefined},//101 wall
+    102: { floor: floorTypes.path, src: 'l-04', img: null, player: 'l-04p', playerImg: null, snd: 'book1'},//102 book 1
+    103: { floor: floorTypes.path, src: 'l-05', img: null, player: 'l-04p', playerImg: null, snd: 'book2'},//103 book 2 
+    104: { floor: floorTypes.path, src: 'l-06', img: null, player: 'l-04p', playerImg: null, snd: 'book3'},//104 book 3
+    105: { floor: floorTypes.path, src: 'l-07', img: null, player: 'l-04p', playerImg: null, snd: 'book4'},//105 book 4
+    106: { floor: floorTypes.path, src: 'l-08', img: null, player: 'l-04p', playerImg: null, snd: 'book5'},//106 book 5
+    107: { floor: floorTypes.path, src: 'l-09', img: null, player: 'l-04p', playerImg: null, snd: 'book6'},//107 book 6
+    108: { floor: floorTypes.path, src: 'l-10', img: null, player: 'l-04p', playerImg: null, snd: 'book7'},//108 book 7
+
+    109: { floor: floorTypes.path, src: 'l-11', img: null, player: 'l-11p', playerImg: null, snd: undefined},//109 book 1 door
+    110: { floor: floorTypes.path, src: 'l-12', img: null, player: 'l-11p', playerImg: null, snd: undefined},//110 book 2 door
+    111: { floor: floorTypes.path, src: 'l-13', img: null, player: 'l-11p', playerImg: null, snd: undefined},//111 book 3 door 
+    112: { floor: floorTypes.path, src: 'l-14', img: null, player: 'l-11p', playerImg: null, snd: undefined},//112 book 4 door
+    113: { floor: floorTypes.path, src: 'l-15', img: null, player: 'l-11p', playerImg: null, snd: undefined},//113 book 5 door
+    114: { floor: floorTypes.path, src: 'l-16', img: null, player: 'l-11p', playerImg: null, snd: undefined},//114 book 6 door
+    115: { floor: floorTypes.path, src: 'l-17', img: null, player: 'l-11p', playerImg: null, snd: undefined},//115 book 7 door
+    116: { floor: floorTypes.path, src: 'l-18', img: null, player: 'l-11p', playerImg: null, snd: 'l-main3'},//116 book door open
+    117: { floor: floorTypes.path, src: 'l-19', img: null, player: 'l-04p', playerImg: null, snd: 'l-main4'},//117 special book closed
+    118: { floor: floorTypes.path, src: 'l-20', img: null, snd: undefined},//118 + door
+
+    119: { floor: floorTypes.path, src: 'l-21', img: null, player: 'l-21p', playerImg: null, snd: 'pip1'},//119 PATH dark
+    120: { floor: floorTypes.path, src: 'l-22', img: null, player: 'l-21p', playerImg: null, snd: 'pip2'},//120 PATH light
+    121: { floor: floorTypes.path, src: 'l-23', img: null, player: 'l-23p', playerImg: null, snd: undefined},//121 chair dark left off
+    122: { floor: floorTypes.path, src: 'l-24', img: null, player: 'l-24p', playerImg: null, snd: undefined},//122 chair dark right off
+    123: { floor: floorTypes.path, src: 'l-25', img: null, player: 'l-23p', playerImg: null, snd: undefined},//123 chair light left off
+    124: { floor: floorTypes.path, src: 'l-26', img: null, player: 'l-24p', playerImg: null, snd: undefined},//124 chair light right off
+    125: { floor: floorTypes.path, src: 'l-27', img: null, player: 'l-23p', playerImg: null, snd: 'marble-thud-left-dark'},//125 chair dark left on
+    126: { floor: floorTypes.path, src: 'l-28', img: null, player: 'l-24p', playerImg: null, snd: 'marble-thud-right-dark'},//126 chair dark right on
+    127: { floor: floorTypes.path, src: 'l-29', img: null, player: 'l-23p', playerImg: null, snd: 'marble-thud-left-light'},//127 chair light left on
+    128: { floor: floorTypes.path, src: 'l-30', img: null, player: 'l-24p', playerImg: null, snd: 'marble-thud-right-light'},//128 chair light right on 
+    129: { floor: floorTypes.solid, src: 'l-31', img: null, player: 'l-32p', playerImg: null, snd: undefined},//129 Y light off
+    130: { floor: floorTypes.solid, src: 'l-32', img: null, player: 'l-32p', playerImg: null, snd: undefined},//130 Y light on
+    131: { floor: floorTypes.solid, src: 'l-33', img: null, player: 'l-33p', playerImg: null, snd: undefined},//131 W light off
+    132: { floor: floorTypes.solid, src: 'l-34', img: null, player: 'l-33p', playerImg: null, snd: undefined},//132 W light on
+
+    133: { floor: floorTypes.path, src: 'l-35', img: null, player: 'l-11p', playerImg: null, snd: undefined},//133 special book open
+
+
+    //gallery 151-200
+
+    //chapel 201-250
+    201: { floor: floorTypes.solid, src: 'c-01', img: null, snd: undefined},//201 c-01 wall
+    202: { floor: floorTypes.path, src: 'c-02', img: null, player: 'c-02p1', playerImg: null, snd: 'c-path1'},//202 c-02 PATH dark - c-02p1, c02p2
+    203: { floor: floorTypes.path, src: 'c-03', img: null, player: 'c-02p1', playerImg: null, snd: 'c-path2'},//203 c-03 PATH light - c-02p1, c02p2
+    204: { floor: floorTypes.path, src: 'c-04', img: null, player: 'c-02p1', playerImg: null, snd: undefined},//204 c-04 door +
+    205: { floor: floorTypes.path, src: 'c-05', img: null, player: 'c-05p', playerImg: null, snd: undefined},//205 c-05 i off - c-05p
+    206: { floor: floorTypes.path, src: 'c-06', img: null, player: 'c-06p', playerImg: null, snd: 'swish5'},//206 c-06 i on - c-06p
+    207: { floor: floorTypes.solid, src: 'c-07', img: null, snd: undefined},//207 c-07 T wall
+    208: { floor: floorTypes.path, src: 'c-08', img: null, player: 'c-08p', playerImg: null, snd: undefined},//208 c-08 T off - c-08p
+    209: { floor: floorTypes.path, src: 'c-09', img: null, player: 'c-09p', playerImg: null, snd: 'thud1'},//209 c-09 T on - c-09p
+    210: { floor: floorTypes.path, src: 'c-10', img: null, player: 'c-10p', playerImg: null, snd: undefined},//210 c-10 V dark off - c-10p
+    211: { floor: floorTypes.path, src: 'c-11', img: null, player: 'c-11p', playerImg: null, snd: 'c-pyre1'},//211 c-11 V dark on - c-11p
+    212: { floor: floorTypes.path, src: 'c-12', img: null, player: 'c-10p', playerImg: null, snd: undefined},//212 c-12 V light off - c-10p
+    213: { floor: floorTypes.path, src: 'c-13', img: null, player: 'c-11p', playerImg: null, snd: 'c-pyre2'},//213 c-13 V light on - c-11p
+    214: { floor: floorTypes.path, src: 'c-14', img: null, player: 'c-15p', playerImg: null, snd: undefined},//214 c-14 X off
+    215: { floor: floorTypes.path, src: 'c-15', img: null, player: 'c-15p', playerImg: null, snd: 'c-pyre3'},//215 c-15 X on - c-15p
+    216: { floor: floorTypes.solid, src: 'c-16', img: null, snd: undefined},//216 c-16 Y wall
+    217: { floor: floorTypes.path, src: 'c-17', img: null, player: 'c-17p', playerImg: null, snd: undefined},//217 c-17 Y dark off - c-17p
+    218: { floor: floorTypes.path, src: 'c-18', img: null, player: 'c-18p', playerImg: null, snd: 'swish6b'},//218 c-18 Y dark on - c-18p
+    219: { floor: floorTypes.path, src: 'c-19', img: null, player: 'c-17p', playerImg: null, snd: undefined},//219 c-19 Y light off - c-17p
+    220: { floor: floorTypes.path, src: 'c-20', img: null, player: 'c-18p', playerImg: null, snd: 'swish6'},//220 c-20 Y light on - c-18p
+    221: { floor: floorTypes.path, src: 'c-21', img: null, player: 'c-21p', playerImg: null, snd: 'thud2'},//221 c-21 cross light - c-21p
+    222: { floor: floorTypes.solid, src: 'c-22', img: null, snd: undefined},//222 c-22 wall
+
+    //garden 301-399
+    301: { floor: floorTypes.solid, src: 'g-01', img: null, snd: undefined},//301 wall
+    302: { floor: floorTypes.path, src: 'g-02', img: null, snd: undefined},//302 door
+    303: { floor: floorTypes.path, src: 'g-03', img: null, player: 'g-03p', playerImg: null, snd: 'grass1'},//303 grass
+    304: { floor: floorTypes.path, src: 'g-04', img: null, player: 'g-03p', playerImg: null, snd: 'grass2'},//304
+    305: { floor: floorTypes.path, src: 'g-05', img: null, player: 'g-03p', playerImg: null, snd: 'grass3'},//305
+    306: { floor: floorTypes.path, src: 'g-06', img: null, player: 'g-03p', playerImg: null, snd: 'grass4'},//306
+    307: { floor: floorTypes.path, src: 'g-07', img: null, player: 'g-03p', playerImg: null, snd: 'grass5'},//307
+    308: { floor: floorTypes.path, src: 'g-08', img: null, player: 'g-03p', playerImg: null, snd: 'grass6'},//308
+    309: { floor: floorTypes.path, src: 'g-09', img: null, player: 'g-09p', playerImg: null, snd: 'grass7'},//309
+    310: { floor: floorTypes.path, src: 'g-10', img: null, player: 'g-09p', playerImg: null, snd: 'grass8'},//310
+    311: { floor: floorTypes.path, src: 'g-11', img: null, player: 'g-09p', playerImg: null, snd: 'grass9'},//311
+    312: { floor: floorTypes.path, src: 'g-12', img: null, player: 'g-09p', playerImg: null, snd: 'grass10'},//312
+    313: { floor: floorTypes.path, src: 'g-13', img: null, player: 'g-09p', playerImg: null, snd: 'grass11'},//313
+    314: { floor: floorTypes.path, src: 'g-14', img: null, player: 'g-09p', playerImg: null, snd: 'grass12'},//314
+    315: { floor: floorTypes.path, src: 'g-15', img: null, player: 'g-15p', playerImg: null, snd: 'empty1'},//315 grass empty
+    316: { floor: floorTypes.path, src: 'g-16', img: null, player: 'g-16p', playerImg: null, snd: 'path1'},//316 path
+    317: { floor: floorTypes.path, src: 'g-17', img: null, player: 'g-17p', playerImg: null, snd: 'path2'},//317
+    318: { floor: floorTypes.path, src: 'g-18', img: null, player: 'g-18p', playerImg: null, snd: 'path3'},//318
+    319: { floor: floorTypes.path, src: 'g-19', img: null, player: 'g-19p', playerImg: null, snd: 'path4'},//319
+    320: { floor: floorTypes.path, src: 'g-20', img: null, player: 'g-20p', playerImg: null, snd: 'path5'},//320
+    321: { floor: floorTypes.path, src: 'g-21', img: null, player: 'g-21p', playerImg: null, snd: 'path6'},//321
+    322: { floor: floorTypes.path, src: 'g-22', img: null, player: 'g-22p', playerImg: null, snd: 'path7'},//322
+    323: { floor: floorTypes.path, src: 'g-23', img: null, player: 'g-15p', playerImg: null, snd: 'empty2'},//323 path empty
+    324: { floor: floorTypes.path, src: 'g-24', img: null, player: 'g-24p', playerImg: null, snd: 'leaf1'},//324 leaf
+    325: { floor: floorTypes.path, src: 'g-25', img: null, player: 'g-24p', playerImg: null, snd: 'leaf2'},//325
+    326: { floor: floorTypes.path, src: 'g-26', img: null, player: 'g-24p', playerImg: null, snd: 'leaf3'},//326
+    327: { floor: floorTypes.path, src: 'g-27', img: null, player: 'g-24p', playerImg: null, snd: 'leaf4'},//327
+    328: { floor: floorTypes.path, src: 'g-28', img: null, player: 'g-24p', playerImg: null, snd: 'leaf5'},//328
+    329: { floor: floorTypes.path, src: 'g-29', img: null, player: 'g-24p', playerImg: null, snd: 'leaf6'},//329
+    330: { floor: floorTypes.path, src: 'g-30', img: null, player: 'g-30p', playerImg: null, snd: 'leaf7'},//330
+    331: { floor: floorTypes.path, src: 'g-31', img: null, player: 'g-30p', playerImg: null, snd: 'leaf8'},//331
+    332: { floor: floorTypes.path, src: 'g-32', img: null, player: 'g-30p', playerImg: null, snd: 'leaf9'},//332
+    333: { floor: floorTypes.path, src: 'g-33', img: null, player: 'g-30p', playerImg: null, snd: 'leaf10'},//333
+    334: { floor: floorTypes.path, src: 'g-34', img: null, player: 'g-30p', playerImg: null, snd: 'leaf11'},//334
+    335: { floor: floorTypes.path, src: 'g-35', img: null, player: 'g-30p', playerImg: null, snd: 'leaf12'},//335
+    336: { floor: floorTypes.path, src: 'g-36', img: null, player: 'g-15p', playerImg: null, snd: 'empty3'},//336 leaf empty
+    337: { floor: floorTypes.path, src: 'g-37', img: null, player: 'g-37p', playerImg: null, snd: 'fern1'},//337 f
+    338: { floor: floorTypes.path, src: 'g-38', img: null, player: 'g-37p', playerImg: null, snd: 'fern2'},//338
+    339: { floor: floorTypes.path, src: 'g-39', img: null, player: 'g-37p', playerImg: null, snd: 'fern3'},//339
+    340: { floor: floorTypes.path, src: 'g-40', img: null, player: 'g-37p', playerImg: null, snd: 'fern4'},//340
+    341: { floor: floorTypes.path, src: 'g-41', img: null, player: 'g-41p', playerImg: null, snd: 'fern5'},//341 r
+    342: { floor: floorTypes.path, src: 'g-42', img: null, player: 'g-41p', playerImg: null, snd: 'fern6'},//342
+    343: { floor: floorTypes.path, src: 'g-43', img: null, player: 'g-41p', playerImg: null, snd: 'fern7'},//343
+    344: { floor: floorTypes.path, src: 'g-44', img: null, player: 'g-41p', playerImg: null, snd: 'fern8'},//344
+    345: { floor: floorTypes.path, src: 'g-45', img: null, player: 'g-15p', playerImg: null, snd: 'empty4'},//345 foliage blank
+    346: { floor: floorTypes.path, src: 'g-46', img: null, player: 'g-46p', playerImg: null, snd: 'stem1'},//346 l
+    347: { floor: floorTypes.path, src: 'g-47', img: null, player: 'g-46p', playerImg: null, snd: 'stem2'},//347
+    348: { floor: floorTypes.path, src: 'g-48', img: null, player: 'g-46p', playerImg: null, snd: 'stem3'},//348
+    349: { floor: floorTypes.path, src: 'g-49', img: null, player: 'g-46p', playerImg: null, snd: 'stem4'},//349
+    350: { floor: floorTypes.path, src: 'g-50', img: null, player: 'g-50p', playerImg: null, snd: 'stem5'},//350
+    351: { floor: floorTypes.path, src: 'g-51', img: null, player: 'g-50p', playerImg: null, snd: 'stem6'},//351
+    352: { floor: floorTypes.path, src: 'g-52', img: null, player: 'g-50p', playerImg: null, snd: 'stem7'},//352
+    353: { floor: floorTypes.path, src: 'g-53', img: null, player: 'g-50p', playerImg: null, snd: 'stem8'},//353
+    354: { floor: floorTypes.path, src: 'g-54', img: null, player: 'g-54p', playerImg: null, snd: 'plant1'},//354 i
+    355: { floor: floorTypes.path, src: 'g-55', img: null, player: 'g-54p', playerImg: null, snd: 'plant2'},//355
+    356: { floor: floorTypes.path, src: 'g-56', img: null, player: 'g-54p', playerImg: null, snd: 'plant3'},//356
+    357: { floor: floorTypes.path, src: 'g-57', img: null, player: 'g-54p', playerImg: null, snd: 'plant4'},//357
+    358: { floor: floorTypes.path, src: 'g-58', img: null, player: 'g-54p', playerImg: null, snd: 'plant5'},//358
+    359: { floor: floorTypes.path, src: 'g-59', img: null, player: 'g-54p', playerImg: null, snd: 'plant6'},//359
+    360: { floor: floorTypes.path, src: 'g-60', img: null, player: 'g-60p', playerImg: null, snd: 'plant7'},//360 i flower
+    361: { floor: floorTypes.path, src: 'g-61', img: null, player: 'g-60p', playerImg: null, snd: 'plant8'},//361
+    362: { floor: floorTypes.path, src: 'g-62', img: null, player: 'g-60p', playerImg: null, snd: 'plant9'},//362
+    363: { floor: floorTypes.path, src: 'g-63', img: null, player: 'g-60p', playerImg: null, snd: 'plant10'},//363
+    364: { floor: floorTypes.path, src: 'g-64', img: null, player: 'g-60p', playerImg: null, snd: 'plant11'},//364
+    365: { floor: floorTypes.path, src: 'g-65', img: null, player: 'g-60p', playerImg: null, snd: 'plant11'},//365
+    366: { floor: floorTypes.path, src: 'g-66', img: null, player: 'g-66p', playerImg: null, snd: 'water'},//366 ~
+    367: { floor: floorTypes.solid, src: 'g-67', img: null, snd: undefined},//367 double ~ block
+    368: { floor: floorTypes.path, src: 'g-68', img: null, player: 'g-68p', playerImg: null, snd: undefined},//368 tree off
+    369: { floor: floorTypes.path, src: 'g-69', img: null, player: 'g-68p', playerImg: null, snd: 'tree'},//369 tree on
+    370: { floor: floorTypes.path, src: 'g-70', img: null, player: 'g-15p', playerImg: null, snd: undefined},//370 empty activated
+    371: { floor: floorTypes.solid, src: 'g-71', img: null, snd: undefined},//371 double ~ block activated
+
+    //gallery
+    401: { floor: floorTypes.solid, src: 'a-01', img: null, snd: undefined},//401 wall
+    402: { floor: floorTypes.solid, src: 'a-02', img: null, snd: undefined},//402 locked door
+    403: { floor: floorTypes.path, src: 'a-03', img: null, snd: undefined},//403 + door
+    404: { floor: floorTypes.solid, src: 'a-04', img: null, snd: undefined},//404 O light off
+    405: { floor: floorTypes.solid, src: 'a-05', img: null, snd: undefined},//405 O light on
+    406: { floor: floorTypes.solid, src: 'a-06', img: null, snd: undefined},//406 i candle off
+    407: { floor: floorTypes.solid, src: 'a-07', img: null, snd: undefined},//407 i candle on
+    408: { floor: floorTypes.solid, src: 'a-08', img: null, snd: undefined},//408 S sculpture off
+    409: { floor: floorTypes.solid, src: 'a-09', img: null, snd: undefined},//409 S sculpture on
+    410: { floor: floorTypes.path, src: 'a-10', img: null, player: 'a-10p', playerImg: null, snd: 'a-walk1a'},//410 path light
+    411: { floor: floorTypes.path, src: 'a-11', img: null, player: 'a-10p', playerImg: null, snd: 'a-walk1b'},//411 path dark
+
+    430: { floor: floorTypes.path, src: 'a-10', img: null, player: 'a-10p', playerImg: null, snd: 'a-walk2a'},//430 path light
+    431: { floor: floorTypes.path, src: 'a-11', img: null, player: 'a-10p', playerImg: null, snd: 'a-walk2b'},//431 path dark
+
+    412: { floor: floorTypes.path, src: 'a-12', img: null, player: 'a-12p', playerImg: null, snd: 'a-l-off'},//412 lever off 
+    413: { floor: floorTypes.path, src: 'a-13', img: null, player: 'a-13p', playerImg: null, snd: 'a-l-on'},//413 lever on 
+    414: { floor: floorTypes.path, src: 'a-14', img: null, player: 'a-14p', playerImg: null, snd: 'a-o'},//414 o 
+    415: { floor: floorTypes.path, src: 'a-15', img: null, player: 'a-15p', playerImg: null, snd: 'a-x'},//415 x
+    416: { floor: floorTypes.solid, src: 'a-16', img: null, snd: undefined},//416  ((
+    417: { floor: floorTypes.solid, src: 'a-17', img: null, snd: undefined},//417  ))
+    418: { floor: floorTypes.solid, src: 'a-18', img: null, snd: undefined},//418  //
+    419: { floor: floorTypes.solid, src: 'a-19', img: null, snd: undefined},//419  \\
+    420: { floor: floorTypes.solid, src: 'a-20', img: null, snd: undefined},//420 downward ))
+    421: { floor: floorTypes.path, src: 'a-21', img: null, player: 'a-21p', playerImg: null, snd: undefined},//421 Z icon
+
+    //painting
+    422: { floor: floorTypes.solid, src: 'a-pic0', img: null, snd: undefined},//422 
+    423: { floor: floorTypes.solid, src: 'a-pic1', img: null, snd: undefined},//423 
+    424: { floor: floorTypes.solid, src: 'a-pic2', img: null, snd: undefined},//424 
+    425: { floor: floorTypes.solid, src: 'a-pic3', img: null, snd: undefined},//425 
+    426: { floor: floorTypes.solid, src: 'a-pic4', img: null, snd: undefined},//426 
+    427: { floor: floorTypes.solid, src: 'a-pic5', img: null, snd: undefined},//427 
+    428: { floor: floorTypes.solid, src: 'a-pic6', img: null, snd: undefined},//428 
+
+    429: { floor: floorTypes.solid, src: 'a-29', img: null, snd: undefined},//429 lever block
+
+
+
+
+
+
+
+
+
+
+
+    };
+
+
+    //initialize sound (needs tileTypes to load)
+    initSnd();
+
+    window.onload = function()
+    {
+        ctx = document.getElementById('game').getContext("2d");
+        requestAnimationFrame(drawGame);
+        ctx.font = "bold 10pt sans-serif";
+
+        // window.addEventListener('click', function(e) { clickHandler(e) });
+        window.addEventListener("keydown", function(e) {
+            //add codes here
+            keysDown[e.keyCode] = true;
+            keysUp[e.keyCode] = false;
+        });
+        window.addEventListener("keyup", function(e) {
+            keysDown[e.keyCode] = false;
+            keysUp[e.keyCode] = true;
+        });
+        viewport.screen = [document.getElementById('game').width,
+            document.getElementById('game').height];
+
+        //tileset code goes here
+        initImg();
+        
+    };
+
+
+    function drawGame()
+    {
+        if(ctx==null) { return; }
+        var currentFrameTime = Date.now();
+        var timeElapsed = currentFrameTime - lastFrameTime;
+        var sec = Math.floor(Date.now()/1000);
+        if(sec!=currentSecond)
+        {
+            currentSecond = sec;
+            framesLastSecond = frameCount;
+            frameCount = 1;
+        }
+        else { frameCount++; }
+
+        processMovement(currentFrameTime);
+
+        if(player.position != playerPosLast) { tick = true; } else { tick = false; }
+
+        //////////////////////////////draw background
+        ctx.fillStyle = "#1B130F";
+        ctx.fillRect(0, 0, viewport.screen[0], viewport.screen[1] + screenOffset);
+
+        if(hasStarted) //app is playing 
+        { 
+
+            //draw bg
+            ctx.fillStyle = "#1B130F";
+            ctx.fillRect(0, 0, viewport.screen[0], viewport.screen[1]  + screenOffset);
+
+            if(gameState.level == 'The QUEEN\'S Suite.') { drawSuite(); }
+            if(gameState.level == 'The Fireplace Room.') { drawFireplaceRoom(); }
+            if(gameState.level == 'The Library.') { drawLibrary(); }
+            if(gameState.level == 'The Chapel.') { drawChapel(); }
+            if(gameState.level == 'The Garden.') { drawGarden(); }
+            if(gameState.level == 'The Gallery.') { drawGallery(); }
+            if(gameState.level == 'The End.') { drawEnd(); }
+
+
+
+            drawTitle();
+            
+        }
+        else if(!hasStarted) //loading sounds
+        { 
+            loadbarHandler();
+            spaceHandler(); 
+        }
+
+        playerPosLast = player.position;
+
+        // frameRate();
+        lastFrameTime = currentFrameTime;
+        requestAnimationFrame(drawGame);
+    }
+
+
+</script>
+
+</head>
+<body>
+<div id="main">
+    <div id="loadscreen">
+        <h1 id="title" class="italic">The <span class="pica">QUEEN'S</span> Suite.</h1>
+        <img id="icons" src="img/icons2.png">
+        <p class="italic" id="description">
+            Hark! Esteemed composer of great renown, your audience
+            has been requested for a music lesson with the mysterious &
+            reclusive <span class="pica">QUEEN</span>, who rumors tell is an avid musician. <br>
+            You have arrived at her royal quarters, yet all is quiet... 
+        </p>
+        <p id="infotext" class="loadbar-text pica">Use the WASD keys to move.</p>
+        <p id="loadtext" class="loadbar-text pica">Sounds are loading...</p>
+        <div id="downloads">
+            <div id="container1">
+                <div id="mvt1">
+                    <button id="p1">I.</button>
+                    <a id="d1">☜</a>
+                </div>
+                <img id="icon1" class="icon" src="img/i-chapel.png">
+            </div>
+            <div id="container2">
+                <div id="mvt2">
+                    <button id="p2">II.</button>
+                    <a id="d2">☜</a>
+                </div>
+                <img id="icon2" class="icon" src="img/i-fireplace.png">
+            </div>
+            <div id="container3">
+                <div id="mvt3">
+                    <button id="p3">III.</button>
+                    <a id="d3">☜</a>
+                </div>
+                <img id="icon3" class="icon" src="img/i-gallery.png">
+            </div>
+            <div id="container4">
+                <div id="mvt4">
+                    <button id="p4">IV.</button>
+                    <a id="d4">☜</a>
+                </div>
+                <img id="icon4" class="icon" src="img/i-garden.png">
+            </div>
+            <div id="container5">
+                <div id="mvt5">
+                    <button id="p5">V.</button>
+                    <a id="d5">☜</a>
+                </div>
+                <img id="icon5" class="icon" src="img/i-library.png">
+            </div>
+        </div>
+    </div>
+	<canvas id="game" width="1450" height="780"></canvas>
+</div> 
+</body>
+</html>
